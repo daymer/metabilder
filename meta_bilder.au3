@@ -179,27 +179,21 @@ EndFunc
 
 
 Func _start_client_agent($Dispatching_port_server, $sFileOpenDialog_VBK)
-$iPID2 = Run(@ComSpec & " /c " & '"'&_ProgramFilesDir()&'\Veeam\Backup Transport\VeeamAgent.exe"', "", @SW_HIDE, $STDIN_CHILD + $STDOUT_CHILD)
+$iPID2 = Run(@ComSpec & " /c " & '"'&_ProgramFilesDir()&'\Veeam\Backup Transport\VeeamAgent.exe"', "", @SW_SHOW, $STDIN_CHILD + $STDOUT_CHILD)
 Sleep(500)
 $Dispatching_port_server = Number($Dispatching_port_server)
-StdinWrite($iPID2, "connectByIPs" & @CRLF & "127.0.0.1" & @CRLF & "." & @CRLF& $Dispatching_port_server& @CRLF & @CRLF& "us" & @CRLF& "ps" & @CRLF)
-Sleep(500)
-$Message = StdoutRead($iPID2, False)
-;ConsoleWrite( $Message)
+StdinWrite($iPID2, "connectByIPs" & @CRLF & "127.0.0.1" & @CRLF & "." & @CRLF& $Dispatching_port_server& @CRLF & @CRLF& "us" & @CRLF& "ps" & @CRLF&"dir" & @CRLF & $sFileOpenDialog_VBK & @CRLF)
+Sleep(1000)
+
+;StdinWrite($iPID2, "dir" & @CRLF & $sFileOpenDialog_VBK & @CRLF)
+$Message = StdoutRead($iPID2, True)
+ConsoleWrite( $Message)
+;ConsoleWrite( $sFileOpenDialog_VBK)
 $aLines = StringSplit($Message, @CRLF, 1)
 Global $client[1][2]
  $client[0][0] = 'line'
   $client[0][1] = 'value'
 ;_ArrayDisplay($aLines)
-
-StdinWrite($iPID2, "dir" & @CRLF & $sFileOpenDialog_VBK & @CRLF)
-$Message = StdoutRead($iPID2, True)
-;ConsoleWrite( $Message)
-$aLines = StringSplit($Message, @CRLF, 1)
-Global $client[1][2]
- $client[0][0] = 'line'
-  $client[0][1] = 'value'
-_ArrayDisplay($aLines)
 #Region ConsoleWrite
 
 #EndRegion
