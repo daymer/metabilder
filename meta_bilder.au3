@@ -45,7 +45,7 @@ $Button_Browse_vbk = GUICtrlCreateButton("Browse", 512, 79, 75, 25)
 GUICtrlSetFont(-1, 10, 400, 0, "Arial")
 $Label1 = GUICtrlCreateLabel("Step #1: Import a VBK", 32, 50, 164, 20)
 GUICtrlSetFont(-1, 10, 400, 0, "Arial")
-$Input1 = GUICtrlCreateInput($sFileOpenDialog_VBK, 32, 80, 473, 24)
+$Input_vbk = GUICtrlCreateInput($sFileOpenDialog_VBK, 32, 80, 473, 24)
 GUICtrlSetFont(-1, 10, 400, 0, "Arial")
 
 
@@ -73,9 +73,13 @@ GUIDelete($dlgTabbed)
 ContinueLoop(2)
 ;MsgBox($MB_SYSTEMMODAL, "", "You chose the following files:" & @CRLF & $sFileOpenDialog_VBK)
 Case $Button3
-
+$sFileOpenDialog_VBK =  GUICtrlRead($Input_vbk)
+if $sFileOpenDialog_VBK = '' Then
+   MsgBox($MB_SYSTEMMODAL, "Warning","Import VBK first")
+Else
 $Dispatch_port_server = _start_server_agent()
 _start_client_agent($Dispatch_port_server, $sFileOpenDialog_VBK)
+	EndIf
 	EndSwitch
 
 
@@ -179,7 +183,7 @@ EndFunc
 
 
 Func _start_client_agent($Dispatching_port_server, $sFileOpenDialog_VBK)
-$iPID2 = Run(@ComSpec & " /c " & '"'&_ProgramFilesDir()&'\Veeam\Backup Transport\VeeamAgent.exe"', "", @SW_SHOW, $STDIN_CHILD + $STDOUT_CHILD)
+$iPID2 = Run(@ComSpec & " /c " & '"'&_ProgramFilesDir()&'\Veeam\Backup Transport\VeeamAgent.exe"', "", @SW_HIDE, $STDIN_CHILD + $STDOUT_CHILD)
 Sleep(500)
 $Dispatching_port_server = Number($Dispatching_port_server)
 StdinWrite($iPID2, "connectByIPs" & @CRLF & "127.0.0.1" & @CRLF & "." & @CRLF& $Dispatching_port_server& @CRLF & @CRLF& "us" & @CRLF& "ps" & @CRLF&"dir" & @CRLF & $sFileOpenDialog_VBK & @CRLF)
@@ -187,15 +191,40 @@ Sleep(1000)
 
 ;StdinWrite($iPID2, "dir" & @CRLF & $sFileOpenDialog_VBK & @CRLF)
 $Message = StdoutRead($iPID2, True)
-ConsoleWrite( $Message)
+;ConsoleWrite( $Message)
 ;ConsoleWrite( $sFileOpenDialog_VBK)
 $aLines = StringSplit($Message, @CRLF, 1)
 Global $client[1][2]
  $client[0][0] = 'line'
   $client[0][1] = 'value'
 ;_ArrayDisplay($aLines)
+For $i = 1 To $aLines[0] Step +1
+   If $aLines[$i] = '' Then
+	  ContinueLoop
+   EndIf
+  $aLines_temp = StringSplit($aLines[$i], '/')
+  ;_ArrayDisplay($aLines_temp)
+  Local $Temp_writer[1][2]
+$Temp_writer[0][0] = $aLines_temp[1]
+if  $aLines_temp[0] = 1 Then
+   $Temp_writer[0][1] = 'not declared'
+Elseif $aLines_temp[0] = 2 Then
+   $Temp_writer[0][1] = $aLines_temp[2]
+   EndIf
+_ArrayConcatenate($client, $Temp_writer)
+Next
+;_ArrayDisplay($client)
+$iIndex = _ArraySearch($client, 'summary.xml', 0, 0, 0, 1)
+$premeta_num = StringInStr ($client[$iIndex][0], ' ')
+$premeta = StringTrimLeft($client[$iIndex][0],$premeta_num)
+$source_meta = 'veeamfs:0:'&$premeta&'/summary.xml@'&$sFileOpenDialog_VBK
+;ConsoleWrite( $source_meta&@cr)
+StdinWrite($iPID2, "restore" & @CRLF & $temp_dir&'/summary.xml' & @CRLF & $source_meta & @CRLF&'.'& @CRLF)
+$Message = StdoutRead($iPID2, True)
+;ConsoleWrite( $Message)
+ProcessClose ($iPID2)
 #Region ConsoleWrite
-
+ConsoleWrite('restore of '&$premeta& ' is done' &@cr)
 #EndRegion
 EndFunc
 
