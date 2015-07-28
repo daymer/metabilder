@@ -125,11 +125,6 @@ local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/J
 local $RegExp_Vms = StringRegExp($sText, '(?s)&lt;Vms&gt;(.*?)&lt;/Vms&gt;', 3)
 local $RegExp_VmPoints = StringRegExp($sText, '(?s)&lt;VmPoints&gt;(.*?)&lt;/VmPoints&gt;', 3)
 ;/main arrays
-_Storages_reparse($RegExp_Storages_str)
-
-
-
-
 #Region repars vars
 global $numm_Vbm_Id = $RegExp_Vbm_Id[0]
 global $VM_ids_in_meta = $numm_string
@@ -147,12 +142,11 @@ EndIf
 global $numm_BackupCreationTime = $RegExp_BackupCreationTime[0]
 global $array_Hosts = $RegExp_Hosts
 global $array_VM_ids = $RegExp_string
-global $array_Storages = $RegExp_Storages
+global $array_Storages = _Storages_reparse($RegExp_Storages_str)
 global $array_JobPoints = $RegExp_JobPoints
 global $array_Vms = $RegExp_Vms
 global $array_VmPoints = $RegExp_VmPoints
 #EndRegion
-
 
 
 EndIf
