@@ -35,6 +35,13 @@ global $storages_reparse_test = False
 global $VMPoints_reparse_test = False
 global $points_reparse_test = True
 #EndRegion
+<<<<<<< Updated upstream
+=======
+$Debug_TB = False
+$storages_reparse_test = true
+
+
+>>>>>>> Stashed changes
 Global $hToolbar, $iMemo
 Global $iItem ; Командный идентификатор кнопки связанный с уведомлением.
 Global Enum $idNew = 1000, $idOpen, $idSave
