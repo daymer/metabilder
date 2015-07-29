@@ -31,17 +31,10 @@ If Not FileExists($temp_dir) Then DirCreate($temp_dir)
 #Region test vars
 global $job_name ='test_job_name'
 global $Debug_TB = False
-global $storages_reparse_test = False
-global $VMPoints_reparse_test = False
+global $storages_reparse_test = True
+global $VMPoints_reparse_test = True
 global $points_reparse_test = True
 #EndRegion
-<<<<<<< Updated upstream
-=======
-$Debug_TB = False
-$storages_reparse_test = true
-
-
->>>>>>> Stashed changes
 Global $hToolbar, $iMemo
 Global $iItem ; Командный идентификатор кнопки связанный с уведомлением.
 Global Enum $idNew = 1000, $idOpen, $idSave
@@ -97,50 +90,50 @@ Func _WM_NOTIFY($hWndGUI, $MsgID, $wParam, $lParam)
                    ; MemoWrite("$NM_LDOWN: Кликнут элемент: " & $iItem & " с индексом: " & _GUICtrlToolbar_CommandToIndex($hToolbar, $iItem))
 					if $iItem = $idOpen Then
 						$sFileOpenDialog_vbm=Import_some_vbm()
-
+						 ConsoleWrite("$NM_LDOWN: Import_some_vbm " & $sFileOpenDialog_vbm &@CR)
+						if $sFileOpenDialog_vbm <> 0 Then
+						  	  $sText = FileRead($sFileOpenDialog_vbm)
 					#Region REPARSING META
+#Region $BackupMeta version
+global $BackupMeta_version = StringRegExp($sText, '(?s)<BackupMeta Version="(.*?)">', 3)
+$BackupMeta_version = $BackupMeta_version[0]
+ConsoleWrite('$BackupMeta_version = '&$BackupMeta_version&@cr)
+#EndRegion
 
-if Import_some_vbm <> 0 Then
-   ConsoleWrite("$NM_LDOWN: Import_some_vbm " & $sFileOpenDialog_vbm &@CR)
-$sText = FileRead($sFileOpenDialog_vbm)
+
+
+#Region $BackupMeta_versions
+if $BackupMeta_version = '178' or $BackupMeta_version ='36' or $BackupMeta_version <> '0' Then
+local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3)
+EndIf
+#EndRegion
+#Region common lines
+#Region pre-header
 local $RegExp_string = StringRegExp($sText, '(?s)<string>(.*?)</string>', 3)
 local $numm_string = UBound($RegExp_string, $UBOUND_ROWS)
+#EndRegion
+#Region KeySets
 local $RegExp_Vbm_Id = StringRegExp($sText, '(?s)&lt;Vbm Id="(.*?)" JobId="', 3)
 local $numm_Vbm_Id = UBound($RegExp_Vbm_Id, $UBOUND_ROWS)
 if $numm_Vbm_Id > 1 Then MsgBox($MB_SYSTEMMODAL, "Error", "More than 1 Vbm_Id.")
 local $RegExp_JobId = StringRegExp($sText, '(?s)" JobId="(.*?)" JobName="', 3)
-
 local $RegExp_JobName = StringRegExp($sText, '(?s)JobName="(.*?)" JobType="', 3)
 local $RegExp_JobType = StringRegExp($sText, '(?s)JobType="(.*?)" JobSourceType="', 3)
 local $RegExp_JobSourceType = StringRegExp($sText, '(?s)JobSourceType="(.*?)" Platform="', 3)
 local $RegExp_Platform = StringRegExp($sText, '(?s)Platform="(.*?)" CreationTimeUtc="', 3)
-
-
-$RegExp_CreationTimeUtc = StringRegExp($sText, '(?s)CreationTimeUtc="(.*?)" FormatVersion=', 3)
-local $numm_CreationTimeUtc = UBound($RegExp_CreationTimeUtc, $UBOUND_ROWS)
-if $numm_CreationTimeUtc  = 0 Then local $RegExp_CreationTimeUtc = StringRegExp($sText, '(?s) CreationTimeUtc="(.*?)" BackupCreationTime="', 3)
-
+local $RegExp_CreationTimeUtc = StringRegExp($sText, '(?s)CreationTimeUtc="(.*?)"', 3)
 local $RegExp_FormatVersion = StringRegExp($sText, '(?s)FormatVersion="(.*?)" BackupCreationTime=', 3)
 local $numm_FormatVersion = UBound($RegExp_FormatVersion, $UBOUND_ROWS)
 local $RegExp_BackupCreationTime = StringRegExp($sText, '(?s) BackupCreationTime="(.*?)"&gt;&lt;Hosts', 3)
-local $RegExp_Hosts = StringRegExp($sText, '(?s)&lt;Hosts&gt;(.*?)&lt;/Hosts&gt;', 3)
-;main arrays
-local $RegExp_Storages = StringRegExp($sText, '(?s)&lt;Storages&gt;(.*?)&lt;/Storages&gt;', 3)
-local $RegExp_Storages_str = $RegExp_Storages[0]
-
-global $BackupMeta_version = StringRegExp($sText, '(?s)<BackupMeta Version="(.*?)">', 3)
-$BackupMeta_version = $BackupMeta_version[0]
-ConsoleWrite('$BackupMeta_version = '&$BackupMeta_version&@cr)
+#EndRegion
+#Region Meta global fields
 local $RegExp_Vms = StringRegExp($sText, '(?s)&lt;Vms&gt;(.*?)&lt;/Vms&gt;', 3)
 local $RegExp_VmPoints = StringRegExp($sText, '(?s)&lt;VmPoints&gt;(.*?)&lt;/VmPoints&gt;', 3)
-#Region $BackupMeta_versions
-if $BackupMeta_version = '178' Then
-local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3)
-local $RegExp_JobPoints_str =$RegExp_JobPoints[0]
-EndIf
+local $RegExp_Hosts = StringRegExp($sText, '(?s)&lt;Hosts&gt;(.*?)&lt;/Hosts&gt;', 3)
+local $RegExp_Storages = StringRegExp($sText, '(?s)&lt;Storages&gt;(.*?)&lt;/Storages&gt;', 3)
 #EndRegion
-;/main arrays
-#Region repars vars
+
+#Region repared vars
 global $numm_Vbm_Id = $RegExp_Vbm_Id[0]
 global $VM_ids_in_meta = $numm_string
 global $numm_JobId = $RegExp_JobId[0]
@@ -157,19 +150,16 @@ EndIf
 global $numm_BackupCreationTime = $RegExp_BackupCreationTime[0]
 global $array_Hosts = $RegExp_Hosts
 global $array_VM_ids = $RegExp_string
-global $array_Storages = _Storages_reparse($RegExp_Storages_str)
+global $array_Storages = _Storages_reparse($RegExp_Storages)
 global $array_Vms = $RegExp_Vms
 global $array_VmPoints = _VMPoints_reparse($RegExp_VmPoints)
-
 #Region $BackupMeta_versions
-if $BackupMeta_version = '178' Then
-	global $array_JobPoints = _JobPoints_reparse($RegExp_JobPoints_str)
+if $BackupMeta_version = '178' or $BackupMeta_version ='36' or $BackupMeta_version <> '0' Then
+	global $array_JobPoints = _JobPoints_reparse($RegExp_JobPoints)
 	EndIf
-
-#EndRegion
-
-
 EndIf
+#EndRegion
+#EndRegion
 #EndRegion
 					EndIf
                     ;----------------------------------------------------------------------------------------------
@@ -209,7 +199,7 @@ EndFunc   ;==>_WM_NOTIFY
 
 #Region vbm_read fuctions
 #Region main arrays reparse Func
-Func _Storages_reparse($RegExp_Storages_str)
+Func _Storages_reparse($RegExp_Storages)
 local $Storages_array_rep[1][13]
 $Storages_array_rep[0][0] = 'Storage Id'
 $Storages_array_rep[0][1] = 'FileName'
@@ -224,7 +214,7 @@ $Storages_array_rep[0][9] = 'BackupSize'
 $Storages_array_rep[0][10] = 'DataSize'
 $Storages_array_rep[0][11] = 'DedupRatio'
 $Storages_array_rep[0][12] = 'CompressRatio'
-
+local $RegExp_Storages_str = $RegExp_Storages[0]
 local $RegExp_Storage_Id = StringRegExp($RegExp_Storages_str, '(?s)&lt;Storage Id="(.*?)" FileName="', 3)
 local $numm_Storage_Id = UBound($RegExp_Storage_Id, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Storage_Id step +1
@@ -316,7 +306,6 @@ $VMPoints_reparse_array_rep[0][9] = 'Point info'
 $RegExp_VMPoints = $RegExp_VMPoints[0]
 
 local $RegExp_Point_Id = StringRegExp($RegExp_VMPoints, '(?s)&lt;Pnt Id="(.*?)"', 3)
- _FileWriteFromArray('test.txt',$RegExp_Point_Id)
 local $numm_Point_Id = UBound($RegExp_Point_Id, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Point_Id step +1
    local $VMPoints_array_rep_temp[1][10]
@@ -377,7 +366,8 @@ EndIf
 ConsoleWrite('$VMPoints_array_rep is done'&@cr)
 Return $VMPoints_reparse_array_rep
 EndFunc
-Func _JobPoints_reparse($RegExp_JobPoints_str)
+Func _JobPoints_reparse($RegExp_JobPoints)
+local $RegExp_JobPoints_str =$RegExp_JobPoints[0]
 local $JobPoints_reparse_array_rep[1][7]
 $JobPoints_reparse_array_rep[0][0] = 'Point Id'
 $JobPoints_reparse_array_rep[0][1] = 'LinkId'
@@ -465,7 +455,6 @@ Func _create_blank_vbm($job_name)
 #EndRegion
 EndFunc
 #EndRegion
-
 Func Import_some_vbm()
     ; Create a constant variable in Local scope of the message to display in FileOpenDialog.
     Local Const $sMessage = "Import VBM"
