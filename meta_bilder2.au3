@@ -28,18 +28,17 @@ $temp_dir = @TempDir&'\VeeamMetaBilder\'
 If Not FileExists($ProgrammDir) Then DirCreate($ProgrammDir)
 If Not FileExists($temp_dir) Then DirCreate($temp_dir)
 #EndRegion
-#Region global vars
+#Region test vars
+global $job_name ='test_job_name'
+global $Debug_TB = False
+global $storages_reparse_test = False
+global $VMPoints_reparse_test = False
+global $points_reparse_test = True
 #EndRegion
-$Debug_TB = False
-$storages_reparse_test = False
-
-
 Global $hToolbar, $iMemo
 Global $iItem ; Командный идентификатор кнопки связанный с уведомлением.
 Global Enum $idNew = 1000, $idOpen, $idSave
-
 _Main()
-
 Func _Main()
     Local $hGUI, $aSize
 
@@ -121,9 +120,18 @@ local $RegExp_Hosts = StringRegExp($sText, '(?s)&lt;Hosts&gt;(.*?)&lt;/Hosts&gt;
 ;main arrays
 local $RegExp_Storages = StringRegExp($sText, '(?s)&lt;Storages&gt;(.*?)&lt;/Storages&gt;', 3)
 local $RegExp_Storages_str = $RegExp_Storages[0]
-local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3)
+
+global $BackupMeta_version = StringRegExp($sText, '(?s)<BackupMeta Version="(.*?)">', 3)
+$BackupMeta_version = $BackupMeta_version[0]
+ConsoleWrite('$BackupMeta_version = '&$BackupMeta_version&@cr)
 local $RegExp_Vms = StringRegExp($sText, '(?s)&lt;Vms&gt;(.*?)&lt;/Vms&gt;', 3)
 local $RegExp_VmPoints = StringRegExp($sText, '(?s)&lt;VmPoints&gt;(.*?)&lt;/VmPoints&gt;', 3)
+#Region $BackupMeta_versions
+if $BackupMeta_version = '178' Then
+local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3)
+local $RegExp_JobPoints_str =$RegExp_JobPoints[0]
+EndIf
+#EndRegion
 ;/main arrays
 #Region repars vars
 global $numm_Vbm_Id = $RegExp_Vbm_Id[0]
@@ -143,9 +151,14 @@ global $numm_BackupCreationTime = $RegExp_BackupCreationTime[0]
 global $array_Hosts = $RegExp_Hosts
 global $array_VM_ids = $RegExp_string
 global $array_Storages = _Storages_reparse($RegExp_Storages_str)
-global $array_JobPoints = $RegExp_JobPoints
 global $array_Vms = $RegExp_Vms
-global $array_VmPoints = $RegExp_VmPoints
+global $array_VmPoints = _VMPoints_reparse($RegExp_VmPoints)
+
+#Region $BackupMeta_versions
+if $BackupMeta_version = '178' Then
+	global $array_JobPoints = _JobPoints_reparse($RegExp_JobPoints_str)
+	EndIf
+
 #EndRegion
 
 
@@ -187,11 +200,6 @@ EndIf
 EndFunc   ;==>_WM_NOTIFY
 
 
-
-#Region test vars
-global $job_name ='test_job_name'
-#EndRegion
-
 #Region vbm_read fuctions
 #Region main arrays reparse Func
 Func _Storages_reparse($RegExp_Storages_str)
@@ -229,35 +237,27 @@ For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][2] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" BlockSize="(.*?)" State=', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][3] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" State="(.*?)" PartialIncrement=', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][4] =  $RegExp_Storage_temp[$i]
 Next
 
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" State="(.*?)" PartialIncrement=', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][5] =  $RegExp_Storage_temp[$i]
-
-
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" PartialIncrement="(.*?)" GfsPeriod=', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][6] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" GfsPeriod="(.*?)" CreationMode=', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][7] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" CreationMode="(.*?)"&gt;&lt;Stats&gt;', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
    For $i = 0 To $numm_Storage_temp step +1
    $text = $RegExp_Storage_temp[$i]
    $trim = StringInStr($text, '" LinkId="')
@@ -272,22 +272,18 @@ Else
 EndIf
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)&lt;BackupSize&gt;(.*?)&lt;/BackupSize&gt;', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][9] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)&lt;DataSize&gt;(.*?)&lt;/DataSize&gt;', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][10] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)&lt;DedupRatio&gt;(.*?)&lt;/DedupRatio&gt;', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][11] =  $RegExp_Storage_temp[$i]
 Next
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)&lt;CompressRatio&gt;(.*?)&lt;/CompressRatio&gt;', 3)
-local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][12] =  $RegExp_Storage_temp[$i]
 Next
@@ -297,6 +293,137 @@ _FileWriteFromArray('Storages_array_rep.txt', $Storages_array_rep)
 EndIf
 ConsoleWrite('$Storages_array_rep is done'&@cr)
 Return $Storages_array_rep
+EndFunc
+Func _VMPoints_reparse($RegExp_VMPoints)
+local $VMPoints_reparse_array_rep[1][10]
+$VMPoints_reparse_array_rep[0][0] = 'Point Id'
+$VMPoints_reparse_array_rep[0][1] = 'LinkId'
+$VMPoints_reparse_array_rep[0][2] = 'GroupId'
+$VMPoints_reparse_array_rep[0][3] = 'CreationTime'
+$VMPoints_reparse_array_rep[0][4] = 'Type'
+$VMPoints_reparse_array_rep[0][5] = 'BackupId'
+$VMPoints_reparse_array_rep[0][6] = 'InsideDir'
+$VMPoints_reparse_array_rep[0][7] = 'StgId'
+$VMPoints_reparse_array_rep[0][8] = 'ParentId'
+$VMPoints_reparse_array_rep[0][9] = 'Point info'
+$RegExp_VMPoints = $RegExp_VMPoints[0]
+
+local $RegExp_Point_Id = StringRegExp($RegExp_VMPoints, '(?s)&lt;Pnt Id="(.*?)"', 3)
+ _FileWriteFromArray('test.txt',$RegExp_Point_Id)
+local $numm_Point_Id = UBound($RegExp_Point_Id, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Point_Id step +1
+   local $VMPoints_array_rep_temp[1][10]
+   $VMPoints_array_rep_temp[0][0] =  $RegExp_Point_Id[$i]
+   _ArrayConcatenate($VMPoints_reparse_array_rep,$VMPoints_array_rep_temp)
+   Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" LinkId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][1] =  $RegExp_Points_temp[$i]
+Next
+
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" GroupId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][2] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" CreationTime="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][3] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" Type="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][4] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" BackupId="(.*?)" /&gt;', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][5] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" InsideDir="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][6] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" StgId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][7] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)" ParentId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Points_temp, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][8] =  $RegExp_Points_temp[$i]
+Next
+local $RegExp_Points_temp = StringRegExp($RegExp_VMPoints, '(?s)&lt;Pnt Id="(.*?)&lt;/Pnt&gt;', 3)
+local $numm_Point_Id = UBound($RegExp_Points_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $VMPoints_reparse_array_rep[$i+1][9] =  $RegExp_Points_temp[$i]
+Next
+
+if $VMPoints_reparse_test = True  Then
+FileDelete('VMPoints_reparse_test.txt')
+_FileWriteFromArray('VMPoints_array_rep.txt', $VMPoints_reparse_array_rep)
+EndIf
+ConsoleWrite('$VMPoints_array_rep is done'&@cr)
+Return $VMPoints_reparse_array_rep
+EndFunc
+Func _JobPoints_reparse($RegExp_JobPoints_str)
+local $JobPoints_reparse_array_rep[1][7]
+$JobPoints_reparse_array_rep[0][0] = 'Point Id'
+$JobPoints_reparse_array_rep[0][1] = 'LinkId'
+$JobPoints_reparse_array_rep[0][2] = 'Num'
+$JobPoints_reparse_array_rep[0][3] = 'GroupId'
+$JobPoints_reparse_array_rep[0][4] = 'CreationTime'
+$JobPoints_reparse_array_rep[0][5] = 'Algoritm'
+$JobPoints_reparse_array_rep[0][6] = 'BackupId'
+
+local $RegExp_Point_Id = StringRegExp($RegExp_JobPoints_str, '&lt;Point Id="(.*?)"', 3)
+local $numm_Point_Id = UBound($RegExp_Point_Id, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Point_Id step +1
+   local $Points_array_rep_temp[1][7]
+   $Points_array_rep_temp[0][0] =  $RegExp_Point_Id[$i]
+   _ArrayConcatenate($JobPoints_reparse_array_rep,$Points_array_rep_temp)
+   Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' LinkId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][1] =  $RegExp_Point_temp[$i]
+Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' Num="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][2] =  $RegExp_Point_temp[$i]
+Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' GroupId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][3] =  $RegExp_Point_temp[$i]
+Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' CreationTime"(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][4] =  $RegExp_Point_temp[$i]
+Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' Algoritm="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][5] =  $RegExp_Point_temp[$i]
+Next
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, ' BackupId="(.*?)"', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][6] =  $RegExp_Point_temp[$i]
+Next
+
+if $points_reparse_test = True  Then
+FileDelete('points_reparse_test.txt')
+_FileWriteFromArray('points_array_rep.txt', $JobPoints_reparse_array_rep)
+EndIf
+ConsoleWrite('$Points_array_rep is done'&@cr)
+Return $JobPoints_reparse_array_rep
 EndFunc
 #EndRegion
 
@@ -331,8 +458,6 @@ Func _create_blank_vbm($job_name)
 #EndRegion
 EndFunc
 #EndRegion
-
-
 
 Func Import_some_vbm()
     ; Create a constant variable in Local scope of the message to display in FileOpenDialog.
