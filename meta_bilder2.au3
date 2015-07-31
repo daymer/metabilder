@@ -91,7 +91,7 @@ Func _WM_NOTIFY($hWndGUI, $MsgID, $wParam, $lParam)
 					if $iItem = $idOpen Then
 						$sFileOpenDialog_vbm=Import_some_vbm()
 						 ConsoleWrite("$NM_LDOWN: Import_some_vbm " & $sFileOpenDialog_vbm &@CR)
-						if $sFileOpenDialog_vbm <> 0 Then
+						if IsString("sFileOpenDialog_vbm") Then
 						  	  $sText = FileRead($sFileOpenDialog_vbm)
 					#Region REPARSING META
 #Region $BackupMeta version
