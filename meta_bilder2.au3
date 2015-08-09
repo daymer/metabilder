@@ -31,9 +31,11 @@ If Not FileExists($temp_dir) Then DirCreate($temp_dir)
 #Region test vars
 global $job_name ='test_job_name'
 global $Debug_TB = False
-global $storages_reparse_test = True
-global $VMPoints_reparse_test = True
-global $points_reparse_test = True
+global $storages_reparse_test = False
+global $VMPoints_reparse_test = False
+global $points_reparse_test = False
+global $hosts_reparse_test = False
+global $vms_reparse_test = False
 #EndRegion
 Global $hToolbar, $iMemo
 Global $iItem ; Командный идентификатор кнопки связанный с уведомлением.
@@ -56,7 +58,7 @@ Func _Main()
     _GUICtrlToolbar_AddBitmap($hToolbar, 1, -1, $IDB_STD_LARGE_COLOR)
 
     ; Добавляет кнопки
-    _GUICtrlToolbar_AddButton($hToolbar, $idNew, $STD_FILENEW)
+    ;_GUICtrlToolbar_AddButton($hToolbar, $idNew, $STD_FILENEW) ;researved
     _GUICtrlToolbar_AddButton($hToolbar, $idOpen, $STD_FILEOPEN)
     _GUICtrlToolbar_AddButton($hToolbar, $idSave, $STD_FILESAVE)
     _GUICtrlToolbar_AddButtonSep($hToolbar)
@@ -65,7 +67,6 @@ Func _Main()
     ; Цикл выполняется, пока окно не будет закрыто
     Do
     Until GUIGetMsg() = $GUI_EVENT_CLOSE
-
 EndFunc   ;==>_Main
 
 ; Записывает строку в элемент для заметок
@@ -93,25 +94,25 @@ Func _WM_NOTIFY($hWndGUI, $MsgID, $wParam, $lParam)
 						 ConsoleWrite("$NM_LDOWN: Import_some_vbm " & $sFileOpenDialog_vbm &@CR)
 						if IsString("sFileOpenDialog_vbm") Then
 						  	  $sText = FileRead($sFileOpenDialog_vbm)
+
+;;;;
 					#Region REPARSING META
+;;;;
+
+
 #Region $BackupMeta version
 global $BackupMeta_version = StringRegExp($sText, '(?s)<BackupMeta Version="(.*?)">', 3)
 $BackupMeta_version = $BackupMeta_version[0]
 ConsoleWrite('$BackupMeta_version = '&$BackupMeta_version&@cr)
+if $BackupMeta_version = '0' then
+	MsgBox($MB_SYSTEMMODAL, "Error", "VBM version isn't found")
+Else
 #EndRegion
-
-
-
-#Region $BackupMeta_versions
-if $BackupMeta_version = '178' or $BackupMeta_version ='36' or $BackupMeta_version <> '0' Then
-local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3)
-EndIf
-#EndRegion
-#Region common lines
 #Region pre-header
 local $RegExp_string = StringRegExp($sText, '(?s)<string>(.*?)</string>', 3)
 local $numm_string = UBound($RegExp_string, $UBOUND_ROWS)
 #EndRegion
+
 #Region KeySets
 local $RegExp_Vbm_Id = StringRegExp($sText, '(?s)&lt;Vbm Id="(.*?)" JobId="', 3)
 local $numm_Vbm_Id = UBound($RegExp_Vbm_Id, $UBOUND_ROWS)
@@ -127,13 +128,12 @@ local $numm_FormatVersion = UBound($RegExp_FormatVersion, $UBOUND_ROWS)
 local $RegExp_BackupCreationTime = StringRegExp($sText, '(?s) BackupCreationTime="(.*?)"&gt;&lt;Hosts', 3)
 #EndRegion
 #Region Meta global fields
-local $RegExp_Vms = StringRegExp($sText, '(?s)&lt;Vms&gt;(.*?)&lt;/Vms&gt;', 3)
-local $RegExp_VmPoints = StringRegExp($sText, '(?s)&lt;VmPoints&gt;(.*?)&lt;/VmPoints&gt;', 3)
+
 local $RegExp_Hosts = StringRegExp($sText, '(?s)&lt;Hosts&gt;(.*?)&lt;/Hosts&gt;', 3)
 local $RegExp_Storages = StringRegExp($sText, '(?s)&lt;Storages&gt;(.*?)&lt;/Storages&gt;', 3)
-#EndRegion
-
-#Region repared vars
+local $RegExp_JobPoints = StringRegExp($sText, '(?s)&lt;JobPoints&gt;(.*?)&lt;/JobPoints&gt;', 3) ;<---- verisions!
+local $RegExp_Vms = StringRegExp($sText, '(?s)&lt;Vms&gt;(.*?)&lt;/Vms&gt;', 3)
+local $RegExp_VmPoints = StringRegExp($sText, '(?s)&lt;VmPoints&gt;(.*?)&lt;/VmPoints&gt;', 3)
 global $numm_Vbm_Id = $RegExp_Vbm_Id[0]
 global $VM_ids_in_meta = $numm_string
 global $numm_JobId = $RegExp_JobId[0]
@@ -148,20 +148,31 @@ if $numm_FormatVersion = 0 Then
 global $numm_FormatVersion = $RegExp_FormatVersion [0]
 EndIf
 global $numm_BackupCreationTime = $RegExp_BackupCreationTime[0]
-global $array_Hosts = $RegExp_Hosts
-global $array_VM_ids = $RegExp_string
-global $array_Storages = _Storages_reparse($RegExp_Storages)
-global $array_Vms = $RegExp_Vms
+global $array_VM_IDs = $RegExp_string
+#EndRegion
+;;
+;Hosts
+;Storages
+;JobPoints
+;Vms
+;VmPoints
+;;
+global $array_Hosts = _Hosts_reparse($RegExp_Hosts)
+local $array_Storages = _Storages_reparse($RegExp_Storages)
+global $array_Storages_sorted = _Array_Storages_sorting($array_Storages)
+global $array_JobPoints = _JobPoints_reparse($RegExp_JobPoints)
+global $array_Vms = _VMs_reparse($RegExp_Vms)
 global $array_VmPoints = _VMPoints_reparse($RegExp_VmPoints)
-#Region $BackupMeta_versions
-if $BackupMeta_version = '178' or $BackupMeta_version ='36' or $BackupMeta_version <> '0' Then
-	global $array_JobPoints = _JobPoints_reparse($RegExp_JobPoints)
-	EndIf
 EndIf
+#Region consistensy check
+$targetarray_Storages= UBound($array_Storages, $UBOUND_ROWS)
+$targetarray_Storages_sorted = UBound($array_Storages_sorted, $UBOUND_ROWS)
+if $targetarray_Storages <> $targetarray_Storages_sorted Then MsgBox($MB_SYSTEMMODAL, "Fatal Error", "Orphaned increment storage!"&@CR&"See debug log for more info")
 #EndRegion
 #EndRegion
-#EndRegion
-					EndIf
+#Region MemoWrite
+EndIf
+EndIf
                     ;----------------------------------------------------------------------------------------------
                 Case $TBN_HOTITEMCHANGE
                   $tNMTBHOTITEM = DllStructCreate($tagNMTBHOTITEM, $lParam)
@@ -195,30 +206,119 @@ EndIf
     EndSwitch
     Return $GUI_RUNDEFMSG
 EndFunc   ;==>_WM_NOTIFY
-
+#EndRegion
 
 #Region vbm_read fuctions
+Func _Array_Storages_sorting($array_Storages)
+#Region sorting $array_Storages
+local $array_Storages_sorted[1][14]
+$array_Storages_sorted[0][0] = 'Storage Id'
+$array_Storages_sorted[0][1] = 'FileName'
+$array_Storages_sorted[0][2] = 'CreationTimeUtc'
+$array_Storages_sorted[0][3] = 'BlockSize'
+$array_Storages_sorted[0][4] = 'State'
+$array_Storages_sorted[0][5] = 'LinkId'
+$array_Storages_sorted[0][6] = 'Partial Increment'
+$array_Storages_sorted[0][7] = 'GfsPeriod'
+$array_Storages_sorted[0][8] = 'CreationMode'
+$array_Storages_sorted[0][9] = 'BackupSize'
+$array_Storages_sorted[0][10] = 'DataSize'
+$array_Storages_sorted[0][11] = 'DedupRatio'
+$array_Storages_sorted[0][12] = 'CompressRatio'
+$array_Storages_sorted[0][13] = 'All'
+local $numm_array_Storages = UBound($array_Storages, $UBOUND_ROWS) - 1
+For $i = 1 To $numm_array_Storages step +1
+Local $temp = $array_Storages[$i][5]
+if $temp = '0000000-0000-0000-0000-000000000000' Then
+_ArrayAdd($array_Storages_sorted, $array_Storages[$i][0], 0)
+$target_index = UBound($array_Storages_sorted, $UBOUND_ROWS) -1
+$array_Storages_sorted[$target_index][1] = $array_Storages[$i][1]
+$array_Storages_sorted[$target_index][2] = $array_Storages[$i][2]
+$array_Storages_sorted[$target_index][3] = $array_Storages[$i][3]
+$array_Storages_sorted[$target_index][4] = $array_Storages[$i][4]
+$array_Storages_sorted[$target_index][5] = $array_Storages[$i][5]
+$array_Storages_sorted[$target_index][6] = $array_Storages[$i][6]
+$array_Storages_sorted[$target_index][7] = $array_Storages[$i][7]
+$array_Storages_sorted[$target_index][8] = $array_Storages[$i][8]
+$array_Storages_sorted[$target_index][9] = $array_Storages[$i][9]
+$array_Storages_sorted[$target_index][10] = $array_Storages[$i][10]
+$array_Storages_sorted[$target_index][11] = $array_Storages[$i][11]
+$array_Storages_sorted[$target_index][12] = $array_Storages[$i][12]
+$array_Storages_sorted[$target_index][13] = $array_Storages[$i][13]
+EndIf
+Next
+$target_source= UBound($array_Storages, $UBOUND_ROWS)-1
+$target_index = UBound($array_Storages_sorted, $UBOUND_ROWS)-1
+;sorting by date
+if $target_index <> 0 Then
+	;;need to sort vbk by time
+	EndIf
+
+
+
+
+While $target_index < $target_source
+$target_index = UBound($array_Storages_sorted, $UBOUND_ROWS)-1
+For $i = 1 To $numm_array_Storages step +1
+if $array_Storages[$i][5] <> '0000000-0000-0000-0000-000000000000' Then
+		$iIndex_exist_in_vbk = _ArraySearch($array_Storages_sorted, $array_Storages[$i][5], 0, 0, 0, 1, 1, 5) ;есть ли ты в $array_Storages_sorted
+		if $iIndex_exist_in_vbk = -1 Then
+			$iIndex_link = _ArraySearch($array_Storages, $array_Storages[$i][5], 0, 0, 0, 1, 1, 0) ;на кого ты ссылаешься
+				$iIndex_exist_in_vbk_link =_ArraySearch($array_Storages_sorted, $array_Storages[$iIndex_link][0], 0, 0, 0, 1, 1, 0);есть ли твой перент в $array_Storages_sorted
+				if $iIndex_exist_in_vbk_link <> -1 Then ;если перент есть
+					;ConsoleWrite($iIndex_exist_in_vbk_link&@cr&$array_Storages[$i][0]&@cr)
+					FileDelete('$array_Storages_sorted.txt')
+					$target_index = UBound($array_Storages_sorted, $UBOUND_ROWS)-1
+					if $target_index = $iIndex_exist_in_vbk_link Then
+							_ArrayAdd($array_Storages_sorted, $array_Storages[$i][0],0)
+							Else
+					_ArrayInsert($array_Storages_sorted, $iIndex_exist_in_vbk_link+1,$array_Storages[$i][0])
+					EndIf
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][1] = $array_Storages[$i][1]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][2] = $array_Storages[$i][2]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][3] = $array_Storages[$i][3]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][4] = $array_Storages[$i][4]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][5] = $array_Storages[$i][5]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][6] = $array_Storages[$i][6]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][7] = $array_Storages[$i][7]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][8] = $array_Storages[$i][8]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][9] = $array_Storages[$i][9]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][10] = $array_Storages[$i][10]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][11] = $array_Storages[$i][11]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][12] = $array_Storages[$i][12]
+					$array_Storages_sorted[$iIndex_exist_in_vbk_link+1][13] = $array_Storages[$i][13]
+					;ConsoleWrite($target_index &' '& $target_source&@CR)
+					EndIf
+		EndIf
+		EndIf
+Next
+WEnd
+#EndRegion
+Return($array_Storages_sorted)
+EndFunc
 #Region main arrays reparse Func
 Func _Storages_reparse($RegExp_Storages)
-local $Storages_array_rep[1][13]
+local $Storages_array_rep[1][14]
 $Storages_array_rep[0][0] = 'Storage Id'
 $Storages_array_rep[0][1] = 'FileName'
 $Storages_array_rep[0][2] = 'CreationTimeUtc'
 $Storages_array_rep[0][3] = 'BlockSize'
 $Storages_array_rep[0][4] = 'State'
 $Storages_array_rep[0][5] = 'LinkId'
-$Storages_array_rep[0][6] = 'PartialIncrement'
+$Storages_array_rep[0][6] = 'Partial Increment'
 $Storages_array_rep[0][7] = 'GfsPeriod'
 $Storages_array_rep[0][8] = 'CreationMode'
 $Storages_array_rep[0][9] = 'BackupSize'
 $Storages_array_rep[0][10] = 'DataSize'
 $Storages_array_rep[0][11] = 'DedupRatio'
 $Storages_array_rep[0][12] = 'CompressRatio'
+$Storages_array_rep[0][13] = 'All'
+
 local $RegExp_Storages_str = $RegExp_Storages[0]
 local $RegExp_Storage_Id = StringRegExp($RegExp_Storages_str, '(?s)&lt;Storage Id="(.*?)" FileName="', 3)
 local $numm_Storage_Id = UBound($RegExp_Storage_Id, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Storage_Id step +1
-   local $Storages_array_rep_temp[1][13]
+   local $Storages_array_rep_temp[1][14]
    $Storages_array_rep_temp[0][0] =  $RegExp_Storage_Id[$i]
    _ArrayConcatenate($Storages_array_rep,$Storages_array_rep_temp)
    Next
@@ -228,6 +328,7 @@ local $numm_Storage_FileName = UBound($RegExp_Storage_FileName, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_FileName step +1
    $Storages_array_rep[$i+1][1] =  $RegExp_Storage_FileName[$i]
 Next
+
 local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)" CreationTimeUtc="(.*?)" BlockSize=', 3)
 local $numm_Storage_temp = UBound($RegExp_Storage_temp, $UBOUND_ROWS) -1
 For $i = 0 To $numm_Storage_temp step +1
@@ -284,11 +385,19 @@ local $RegExp_Storage_temp = StringRegExp($RegExp_Storages_str, '(?s)&lt;Compres
 For $i = 0 To $numm_Storage_temp step +1
    $Storages_array_rep[$i+1][12] =  $RegExp_Storage_temp[$i]
 Next
+local $RegExp_Storage_FileName = StringRegExp($RegExp_Storages_str, '(?s)&lt;Storage Id="(.*?)&lt;/Storage&gt;', 3)
+local $numm_Storage_FileName = UBound($RegExp_Storage_FileName, $UBOUND_ROWS) -1
+For $i = 0 To $numm_Storage_FileName step +1
+   $Storages_array_rep[$i+1][13] =  $RegExp_Storage_FileName[$i]
+Next
 if $storages_reparse_test = True  Then
 FileDelete('Storages_reparse_test.txt')
 _FileWriteFromArray('Storages_array_rep.txt', $Storages_array_rep)
 EndIf
 ConsoleWrite('$Storages_array_rep is done'&@cr)
+
+
+
 Return $Storages_array_rep
 EndFunc
 Func _VMPoints_reparse($RegExp_VMPoints)
@@ -302,7 +411,7 @@ $VMPoints_reparse_array_rep[0][5] = 'BackupId'
 $VMPoints_reparse_array_rep[0][6] = 'InsideDir'
 $VMPoints_reparse_array_rep[0][7] = 'StgId'
 $VMPoints_reparse_array_rep[0][8] = 'ParentId'
-$VMPoints_reparse_array_rep[0][9] = 'Point info'
+$VMPoints_reparse_array_rep[0][9] = 'Point all'
 $RegExp_VMPoints = $RegExp_VMPoints[0]
 
 local $RegExp_Point_Id = StringRegExp($RegExp_VMPoints, '(?s)&lt;Pnt Id="(.*?)"', 3)
@@ -368,7 +477,7 @@ Return $VMPoints_reparse_array_rep
 EndFunc
 Func _JobPoints_reparse($RegExp_JobPoints)
 local $RegExp_JobPoints_str =$RegExp_JobPoints[0]
-local $JobPoints_reparse_array_rep[1][7]
+local $JobPoints_reparse_array_rep[1][8]
 $JobPoints_reparse_array_rep[0][0] = 'Point Id'
 $JobPoints_reparse_array_rep[0][1] = 'LinkId'
 $JobPoints_reparse_array_rep[0][2] = 'Num'
@@ -376,11 +485,12 @@ $JobPoints_reparse_array_rep[0][3] = 'GroupId'
 $JobPoints_reparse_array_rep[0][4] = 'CreationTime'
 $JobPoints_reparse_array_rep[0][5] = 'Algoritm'
 $JobPoints_reparse_array_rep[0][6] = 'BackupId'
+$JobPoints_reparse_array_rep[0][7] = 'JobPoints all'
 
 local $RegExp_Point_Id = StringRegExp($RegExp_JobPoints_str, '&lt;Point Id="(.*?)"', 3)
 local $numm_Point_Id = UBound($RegExp_Point_Id, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Point_Id step +1
-   local $Points_array_rep_temp[1][7]
+   local $Points_array_rep_temp[1][8]
    $Points_array_rep_temp[0][0] =  $RegExp_Point_Id[$i]
    _ArrayConcatenate($JobPoints_reparse_array_rep,$Points_array_rep_temp)
    Next
@@ -414,7 +524,11 @@ local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Points_temp step +1
    $JobPoints_reparse_array_rep[$i+1][6] =  $RegExp_Point_temp[$i]
 Next
-
+local $RegExp_Point_temp = StringRegExp($RegExp_JobPoints_str, '&lt;Point Id="(.*?) /&gt;', 3)
+local $numm_Points_temp = UBound($RegExp_Point_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Points_temp step +1
+   $JobPoints_reparse_array_rep[$i+1][7] =  $RegExp_Point_temp[$i]
+Next
 if $points_reparse_test = True  Then
 FileDelete('points_reparse_test.txt')
 _FileWriteFromArray('points_array_rep.txt', $JobPoints_reparse_array_rep)
@@ -422,10 +536,101 @@ EndIf
 ConsoleWrite('$Points_array_rep is done'&@cr)
 Return $JobPoints_reparse_array_rep
 EndFunc
+Func _Hosts_reparse($RegExp_Hosts)
+local $RegExp_Hosts_str =$RegExp_Hosts[0]
+local $Hosts_reparse_array_rep[1][5]
+$Hosts_reparse_array_rep[0][0] = 'Id'
+$Hosts_reparse_array_rep[0][1] = 'MoRef'
+$Hosts_reparse_array_rep[0][2] = 'Name'
+$Hosts_reparse_array_rep[0][3] = 'Type'
+$Hosts_reparse_array_rep[0][4] = 'Host all'
+
+local $RegExp_Host_Id = StringRegExp($RegExp_Hosts_str, 'Id="(.*?)"', 3)
+local $numm_Host_Id = UBound($RegExp_Host_Id, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Host_Id step +1
+   local $Hosts_array_rep_temp[1][5]
+   $Hosts_array_rep_temp[0][0] =  $RegExp_Host_Id[$i]
+   _ArrayConcatenate($Hosts_reparse_array_rep,$Hosts_array_rep_temp)
+   Next
+local $RegExp_Host_temp = StringRegExp($RegExp_Hosts_str, ' MoRef="(.*?)"', 3)
+local $numm_Host_Id_temp = UBound($RegExp_Host_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $RegExp_Host_temp step +1
+   $Hosts_reparse_array_rep[$i+1][1] =  $RegExp_Host_temp[$i]
+Next
+
+local $RegExp_Host_temp = StringRegExp($RegExp_Hosts_str, ' Name="(.*?)"', 3)
+local $numm_Host_Id_temp = UBound($RegExp_Host_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $RegExp_Host_temp step +1
+   $Hosts_reparse_array_rep[$i+1][2] =  $RegExp_Host_temp[$i]
+Next
+local $RegExp_Host_temp = StringRegExp($RegExp_Hosts_str, ' Type="(.*?)"', 3)
+local $numm_Host_Id_temp = UBound($RegExp_Host_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $RegExp_Host_temp step +1
+   $Hosts_reparse_array_rep[$i+1][3] =  $RegExp_Host_temp[$i]
+Next
+local $RegExp_Host_temp = StringRegExp($RegExp_Hosts_str, '&lt;Host Id="(.*?)" /&gt;', 3)
+local $numm_Host_Id_temp = UBound($RegExp_Host_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $RegExp_Host_temp step +1
+   $Hosts_reparse_array_rep[$i+1][4] =  $RegExp_Host_temp[$i]
+Next
+
+if $hosts_reparse_test = True  Then
+FileDelete('Hosts_array_rep.txt')
+_FileWriteFromArray('Hosts_array_rep.txt', $Hosts_reparse_array_rep)
+EndIf
+ConsoleWrite('$Hosts_array_rep is done'&@cr)
+Return $Hosts_reparse_array_rep
+EndFunc
+Func _VMs_reparse($RegExp_Vms)
+local $RegExp_Vms_str =$RegExp_Vms[0]
+local $Vms_reparse_array_rep[1][6]
+$Vms_reparse_array_rep[0][0] = 'Id'
+$Vms_reparse_array_rep[0][1] = 'ObjectId'
+$Vms_reparse_array_rep[0][2] = 'VmRef'
+$Vms_reparse_array_rep[0][3] = 'DisplayName'
+$Vms_reparse_array_rep[0][4] = 'IsCorrupted'
+$Vms_reparse_array_rep[0][5] = 'VM_all'
+
+local $RegExp_Vms_Id = StringRegExp($RegExp_Vms_str, '&lt;Vm Id="(.*?)"', 3)
+local $numm_Vms_Id = UBound($RegExp_Vms_Id, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_Id step +1
+   local $Vms_ID_array_rep_temp[1][6]
+   $Vms_ID_array_rep_temp[0][0] =  $RegExp_Vms_Id[$i]
+   _ArrayConcatenate($Vms_reparse_array_rep,$Vms_ID_array_rep_temp)
+   Next
+local $RegExp_Vms_temp = StringRegExp($RegExp_Vms_str, ' ObjectId="(.*?)"', 3)
+local $numm_Vms_temp = UBound($RegExp_Vms_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_temp step +1
+   $Vms_reparse_array_rep[$i+1][1] =  $RegExp_Vms_temp[$i]
+Next
+local $RegExp_Vms_temp = StringRegExp($RegExp_Vms_str, ' VmRef="(.*?)"', 3)
+local $numm_Vms_temp = UBound($RegExp_Vms_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_temp step +1
+   $Vms_reparse_array_rep[$i+1][2] =  $RegExp_Vms_temp[$i]
+Next
+local $RegExp_Vms_temp = StringRegExp($RegExp_Vms_str, ' DisplayName="(.*?)"', 3)
+local $numm_Vms_temp = UBound($RegExp_Vms_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_temp step +1
+   $Vms_reparse_array_rep[$i+1][3] =  $RegExp_Vms_temp[$i]
+Next
+local $RegExp_Vms_temp = StringRegExp($RegExp_Vms_str, ' IsCorrupted="(.*?)"', 3)
+local $numm_Vms_temp = UBound($RegExp_Vms_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_temp step +1
+   $Vms_reparse_array_rep[$i+1][4] =  $RegExp_Vms_temp[$i]
+Next
+local $RegExp_Vms_temp = StringRegExp($RegExp_Vms_str, '&lt;Vm Id="(.*?)&lt;/Vm&gt;', 3)
+local $numm_Vms_temp = UBound($RegExp_Vms_temp, $UBOUND_ROWS) - 1
+For $i = 0 To $numm_Vms_temp step +1
+   $Vms_reparse_array_rep[$i+1][5] = '&lt;Vm Id="'& $RegExp_Vms_temp[$i]&'&lt;/Vm&gt;'
+Next
+if $VMs_reparse_test = True  Then
+FileDelete('VMs_array_rep.txt')
+_FileWriteFromArray('VMs_array_rep.txt', $Vms_reparse_array_rep)
+EndIf
+ConsoleWrite('$VMs_array_rep is done'&@cr)
+Return $Vms_reparse_array_rep
+EndFunc
 #EndRegion
-
-
-
 #EndRegion
 #Region vbm_create fuctions
 
@@ -479,3 +684,4 @@ Func Import_some_vbm()
 		Return($sFileOpenDialog_vbm)
     EndIf
 EndFunc   ;==>Example
+
