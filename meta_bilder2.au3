@@ -17,7 +17,11 @@
 #include <GuiStatusBar.au3>
 #include <GuiToolbar.au3>
 #include <ToolbarConstants.au3>
-
+#include "Table.au3"
+#include <StaticConstants.au3>
+#include <GuiButton.au3>
+#include <ColorConstants.au3>
+$version_exe = '0.2.0.0'
 If Not IsAdmin() Then
     MsgBox($MB_SYSTEMMODAL, "Warning","Admin rights are not detected."& @CR& 'You need to be admin to run this tool')
 	Exit
@@ -37,62 +41,81 @@ global $points_reparse_test = False
 global $hosts_reparse_test = False
 global $vms_reparse_test = False
 #EndRegion
-Global $hToolbar, $iMemo
-Global $iItem ; Командный идентификатор кнопки связанный с уведомлением.
-Global Enum $idNew = 1000, $idOpen, $idSave
+
 _Main()
 Func _Main()
     Local $hGUI, $aSize
-
+    If @AutoItX64 Then $sWow64 = "\Wow6432Node"
+    Local $sPath = RegRead("HKEY_LOCAL_MACHINE\SOFTWARE" & $sWow64 & "\AutoIt v3\AutoIt", "InstallDir") & "\Examples\GUI\Advanced\Images"
     ; Создаёт GUI
-    $hGUI = GUICreate(StringTrimRight(@ScriptName, 4), 600, 400)
-    $hToolbar = _GUICtrlToolbar_Create($hGUI)
-    $aSize = _GUICtrlToolbar_GetMaxSize($hToolbar)
+    $hGUI = GUICreate(StringTrimRight("Veeam Meta Parser "&$version_exe, 2), 1000, 750)
+GUISetBkColor(0xF0F4F9)
+$tools = GUICtrlCreateGroup("", -1, -10, 1000, 55)
+$Group2 = GUICtrlCreateGroup("", 16, 48, 465, 670)
+$Group3 = GUICtrlCreateGroup("", 485, 48, 490, 670)
+  $open = GUICtrlCreateIcon("shell32.dll", 5, 5, 5, 32, 32)
+    $save= GUICtrlCreateIcon("shell32.dll", 7, 37, 5, 32, 32)
+	GUICtrlCreateLabel('|', 74, 7, 5, 30, $SS_ETCHEDVERT)
+	  $help = GUICtrlCreateIcon("shell32.dll", 24, 79, 5, 32, 32)
+$tools = GUICtrlCreateGroup("", 0, 715, 1000, 40)
+Global $idProgressbar1 = GUICtrlCreateProgress(745, 725, 250, 20)
+GUICtrlSetState($idProgressbar1, $GUI_HIDE )
+    GUICtrlSetColor(-1, 32250); not working with Windows XP Style
+GUISetState(@SW_SHOW)
 
-    ;$iMemo = GUICtrlCreateEdit("", 2, $aSize[1] + 20, 596, 396 - ($aSize[1] + 20), $WS_VSCROLL)
-    GUICtrlSetFont($iMemo, 9, 400, 0, "Courier New")
-    GUISetState()
-    GUIRegisterMsg($WM_NOTIFY, "_WM_NOTIFY")
 
-    ; Добавляет стандартный системный bitmaps
-    _GUICtrlToolbar_AddBitmap($hToolbar, 1, -1, $IDB_STD_LARGE_COLOR)
 
-    ; Добавляет кнопки
-    ;_GUICtrlToolbar_AddButton($hToolbar, $idNew, $STD_FILENEW) ;researved
-    _GUICtrlToolbar_AddButton($hToolbar, $idOpen, $STD_FILEOPEN)
-    _GUICtrlToolbar_AddButton($hToolbar, $idSave, $STD_FILESAVE)
-    _GUICtrlToolbar_AddButtonSep($hToolbar)
-    _GUICtrlToolbar_AddButton($hToolbar, $idHelp, $STD_HELP)
 
-    ; Цикл выполняется, пока окно не будет закрыто
-    Do
-    Until GUIGetMsg() = $GUI_EVENT_CLOSE
+     While 1
+        $GUIMsg = GUIGetMsg()
+
+        Switch $GUIMsg
+            Case $GUI_EVENT_CLOSE
+            			ExitLoop
+
+			Case $open
+				GUICtrlSetState($idProgressbar1, $GUI_show )
+				_Parse()
+				GUICtrlSetData($idProgressbar1, 100)
+				Sleep(1000)
+				GUICtrlSetState($idProgressbar1, $GUI_HIDE )
+$Group2 = GUICtrlCreateGroup("", 16, 48, 465, 670)
+$Checkbox1 = GUICtrlCreateCheckbox("", 33, 70, 15, 15)
+$Checkbox2 = GUICtrlCreateCheckbox("", 78, 100, 15, 15)
+$Checkbox3 = GUICtrlCreateCheckbox("", 78, 130, 15, 15)
+$Checkbox4 = GUICtrlCreateCheckbox("", 78, 160, 15, 15)
+$Checkbox5 = GUICtrlCreateCheckbox("", 78, 190, 15, 15)
+$Checkbox6 = GUICtrlCreateCheckbox("", 33, 220, 15, 15)
+$Button1 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T135429.vbk", 50, 65, 410, 25,  BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button2 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T191524.vib", 95, 95, 363, 25,  BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button3 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T191524.vib", 95, 125, 363, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button4 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T191524.vib", 95, 155, 363, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button5 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T191524.vib", 95, 185, 363, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button6 = GUICtrlCreateLabel("Eugene Test NetApp OnHost2015-07-14T135429.vbk", 51, 215, 410, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+GUICtrlCreateGroup("", -99, -99, 1, 1)
+
+
+$Group3 = GUICtrlCreateGroup("", 485, 48, 490, 670)
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 65, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 85, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 105, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 125, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 145, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+$Button7 = GUICtrlCreateLabel("VM: aff77f0e-a090-46ad-8463-2846ca8b7c57 Point: 0856ea98-a473-4072-b256-341572aa4a4d", 499, 165, 470, 25, BitOR($SS_Left, $SS_CENTERIMAGE))
+GUICtrlCreateGroup("", -99, -99, 1, 1)
+
+
+			EndSwitch
+			WEnd
+
 EndFunc   ;==>_Main
 
-; Записывает строку в элемент для заметок
-Func MemoWrite($sMessage = "")
-    GUICtrlSetData($iMemo, $sMessage & @CRLF, 1)
-EndFunc   ;==>MemoWrite
 
-; Обработчик уведомлений - WM_NOTIFY
-Func _WM_NOTIFY($hWndGUI, $MsgID, $wParam, $lParam)
-    #forceref $hWndGUI, $MsgID, $wParam
-    Local $tNMHDR, $hwndFrom, $code, $i_idNew, $dwFlags, $i_idOld ; , $idFrom
-    Local $tNMTBHOTITEM
-    $tNMHDR = DllStructCreate($tagNMHDR, $lParam)
-    $hwndFrom = DllStructGetData($tNMHDR, "hWndFrom")
-    ; $idFrom = DllStructGetData($tNMHDR, "IDFrom")
-    $code = DllStructGetData($tNMHDR, "Code")
-    Switch $hwndFrom
-        Case $hToolbar
-            Switch $code
-                Case $NM_LDOWN
-                    ;----------------------------------------------------------------------------------------------
-                   ; MemoWrite("$NM_LDOWN: Кликнут элемент: " & $iItem & " с индексом: " & _GUICtrlToolbar_CommandToIndex($hToolbar, $iItem))
-					if $iItem = $idOpen Then
+Func _Parse()
+
 						$sFileOpenDialog_vbm=Import_some_vbm()
 						 ConsoleWrite("$NM_LDOWN: Import_some_vbm " & $sFileOpenDialog_vbm &@CR)
-						if IsString("sFileOpenDialog_vbm") Then
+						if Not $sFileOpenDialog_vbm = 0 Then
 						  	  $sText = FileRead($sFileOpenDialog_vbm)
 
 ;;;;
@@ -170,45 +193,10 @@ $targetarray_Storages_sorted = UBound($array_Storages_sorted, $UBOUND_ROWS)
 if $targetarray_Storages <> $targetarray_Storages_sorted Then MsgBox($MB_SYSTEMMODAL, "Fatal Error", "Orphaned increment storage!"&@CR&"See debug log for more info")
 #EndRegion
 #EndRegion
-#Region MemoWrite
-EndIf
-EndIf
-                    ;----------------------------------------------------------------------------------------------
-                Case $TBN_HOTITEMCHANGE
-                  $tNMTBHOTITEM = DllStructCreate($tagNMTBHOTITEM, $lParam)
-                   $i_idOld = DllStructGetData($tNMTBHOTITEM, "idOld")
-                    $i_idNew = DllStructGetData($tNMTBHOTITEM, "idNew")
-                    $iItem = $i_idNew
-                    $dwFlags = DllStructGetData($tNMTBHOTITEM, "dwFlags")
-                    If BitAND($dwFlags, $HICF_LEAVING) = $HICF_LEAVING Then
-                        ;MemoWrite("$HICF_LEAVING: " & $i_idOld)
-                    Else
-                        Switch $i_idNew
-                           Case $idNew
-                                ;----------------------------------------------------------------------------------------------
-                    ;            MemoWrite("$TBN_HOTITEMCHANGE: $idNew")
-                                ;----------------------------------------------------------------------------------------------
-                            Case $idOpen
-                                ;----------------------------------------------------------------------------------------------
-                    ;            MemoWrite("$TBN_HOTITEMCHANGE: $idOpen")
-                                ;----------------------------------------------------------------------------------------------
-                            Case $idSave
-                                ;----------------------------------------------------------------------------------------------
-                    ;            MemoWrite("$TBN_HOTITEMCHANGE: $idSave")
-                                ;----------------------------------------------------------------------------------------------
-                            Case $idHelp
-                                ;----------------------------------------------------------------------------------------------
-                    ;            MemoWrite("$TBN_HOTITEMCHANGE: $idHelp")
-                                ;----------------------------------------------------------------------------------------------
-                        EndSwitch
-                    EndIf
-            EndSwitch
-    EndSwitch
-    Return $GUI_RUNDEFMSG
-EndFunc   ;==>_WM_NOTIFY
-#EndRegion
+						EndIf
+						EndFunc
 
-#Region vbm_read fuctions
+						#Region vbm_read fuctions
 Func _Array_Storages_sorting($array_Storages)
 #Region sorting $array_Storages
 local $array_Storages_sorted[1][14]
@@ -395,7 +383,7 @@ FileDelete('Storages_reparse_test.txt')
 _FileWriteFromArray('Storages_array_rep.txt', $Storages_array_rep)
 EndIf
 ConsoleWrite('$Storages_array_rep is done'&@cr)
-
+GUICtrlSetData($idProgressbar1, 40)
 
 
 Return $Storages_array_rep
@@ -467,12 +455,13 @@ local $numm_Point_Id = UBound($RegExp_Points_temp, $UBOUND_ROWS) - 1
 For $i = 0 To $numm_Points_temp step +1
    $VMPoints_reparse_array_rep[$i+1][9] =  $RegExp_Points_temp[$i]
 Next
-
+GUICtrlSetData($idProgressbar1, 80)
 if $VMPoints_reparse_test = True  Then
 FileDelete('VMPoints_reparse_test.txt')
 _FileWriteFromArray('VMPoints_array_rep.txt', $VMPoints_reparse_array_rep)
 EndIf
 ConsoleWrite('$VMPoints_array_rep is done'&@cr)
+
 Return $VMPoints_reparse_array_rep
 EndFunc
 Func _JobPoints_reparse($RegExp_JobPoints)
@@ -535,6 +524,7 @@ _FileWriteFromArray('points_array_rep.txt', $JobPoints_reparse_array_rep)
 EndIf
 ConsoleWrite('$Points_array_rep is done'&@cr)
 Return $JobPoints_reparse_array_rep
+GUICtrlSetData($idProgressbar1, 60)
 EndFunc
 Func _Hosts_reparse($RegExp_Hosts)
 local $RegExp_Hosts_str =$RegExp_Hosts[0]
@@ -628,6 +618,7 @@ FileDelete('VMs_array_rep.txt')
 _FileWriteFromArray('VMs_array_rep.txt', $Vms_reparse_array_rep)
 EndIf
 ConsoleWrite('$VMs_array_rep is done'&@cr)
+GUICtrlSetData($idProgressbar1, 80)
 Return $Vms_reparse_array_rep
 EndFunc
 #EndRegion
@@ -684,4 +675,3 @@ Func Import_some_vbm()
 		Return($sFileOpenDialog_vbm)
     EndIf
 EndFunc   ;==>Example
-
