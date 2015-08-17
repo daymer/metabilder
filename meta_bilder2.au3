@@ -2,7 +2,7 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_UseX64=y
 #AutoIt3Wrapper_Res_Comment=beta
-#AutoIt3Wrapper_Res_Fileversion=0.2.0.0
+#AutoIt3Wrapper_Res_Fileversion=0.3.0.1
 #AutoIt3Wrapper_Res_Fileversion_AutoIncrement=y
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <Date.au3>
@@ -150,7 +150,7 @@ Next
 						;_ArrayDisplay($array_Vms,'$array_Vms')
 						;_ArrayDisplay($array_VmPoints,'$array_VmPoints')
 						;_ArrayDisplay($array_VM_IDs,'$array_VM_IDs')
-												Sleep(1000)
+												Sleep(500)
 				GUICtrlSetState($idProgressbar1, $GUI_HIDE )
 ConsoleWrite('############################################################################################meta_bilder_starts_working############################################################################################'&@CR)
 #Region list creating
@@ -2390,10 +2390,22 @@ Func _button_stg_size($button_size_storage_numm)
 	$temp_id = Eval('Button_stg_id'&$button_size_storage_numm)
 	ConsoleWrite($temp_id&@CR)
 	local $iIndex = _ArraySearch($array_Storages_sorted, $temp_id, 0, 0, 0, 0, 1, 1)
-			MsgBox($MB_SYSTEMMODAL, "Not parsed info", $array_Storages_sorted[$iIndex][13])
+					local $parsed_window_array[1][10]
+$parsed_window_array[0][0] = $array_Storages_sorted[$iIndex][0]
+$parsed_window_array[0][1] = $array_Storages_sorted[$iIndex][1]
+$parsed_window_array[0][2] = $array_Storages_sorted[$iIndex][2]
+$parsed_window_array[0][3] = $array_Storages_sorted[$iIndex][3]
+$parsed_window_array[0][4] = $array_Storages_sorted[$iIndex][5]
+$parsed_window_array[0][5] = $array_Storages_sorted[$iIndex][7]
+$parsed_window_array[0][6] = $array_Storages_sorted[$iIndex][9]
+$parsed_window_array[0][7] =$array_Storages_sorted[$iIndex][10]
+$parsed_window_array[0][8] =$array_Storages_sorted[$iIndex][11]
+$parsed_window_array[0][9] =$array_Storages_sorted[$iIndex][12]
+			_ArrayDisplay($parsed_window_array,$temp_id,"",16, "|","Storage Id|FileName|CreationTimeUtc|BlockSize|LinkId|GfsPeriod|BackupSize|DataSize|DedupRatio|CompressRatio",Default)
+
 EndFunc
 Func _button_vms_in_stg($button_vms_in_stg_numm)
 	$temp_id = Eval('Button_vms_in_stg_id'&$button_vms_in_stg_numm)
 	local $iIndex = _ArraySearch($array_VmPoints, $temp_id, 0, 0, 0, 0, 1, 0)
-			MsgBox($MB_SYSTEMMODAL, "Not parsed info", $array_VmPoints[$iIndex][9])
+			;MsgBox($MB_SYSTEMMODAL, "Not parsed info", $array_VmPoints[$iIndex][9])
 EndFunc
